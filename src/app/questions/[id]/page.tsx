@@ -63,7 +63,8 @@ export default function QuestionPage() {
         const buf = typeof window !== 'undefined' ? window.sessionStorage.getItem(base) : null;
         if (!buf) {
           // create queue from lesson questions
-          const list = await (await import('@/lib/api')).then(m => m.fetchQuestions({ lessonId: question.lesson_id }));
+          const { fetchQuestions } = await import('@/lib/api');
+          const list = await fetchQuestions({ lessonId: question.lesson_id });
           const ids = list.map(q => q.id);
           const payload = { ids, index: ids.indexOf(question.id) >= 0 ? ids.indexOf(question.id) : 0, wrong: 0, total: ids.length };
           if (typeof window !== 'undefined') window.sessionStorage.setItem(base, JSON.stringify(payload));
@@ -132,7 +133,8 @@ export default function QuestionPage() {
       const buf = typeof window !== 'undefined' ? window.sessionStorage.getItem(base) : null;
       let payload = buf ? JSON.parse(buf) : null;
       if (!payload) {
-        const list = await (await import('@/lib/api')).then(m => m.fetchQuestions({ lessonId: question.lesson_id }));
+        const { fetchQuestions } = await import('@/lib/api');
+        const list = await fetchQuestions({ lessonId: question.lesson_id });
         const ids = list.map(q => q.id);
         payload = { ids, index: 0, wrong: 0, total: ids.length };
       }
@@ -227,7 +229,8 @@ export default function QuestionPage() {
               const bad = ['null', 'undefined', 'none', 'n/a', 'na', 'nil', '0', '-'];
               return !bad.includes(s.toLowerCase());
             };
-            const hasQuestionImage = isValidImg(question.image_url) || (!!question.image_id && String(question.image_id) !== '0');
+            const questionImageId = (question as any)?.image_id;
+            const hasQuestionImage = isValidImg(question.image_url) || (!!questionImageId && String(questionImageId) !== '0');
             const imgAnswersCount = answers.filter((a) => isValidImg(a.image_url)).length;
             const hasImageAnswers = imgAnswersCount > 0;
             const isTxtOnlyType = type.includes('txt_only');
