@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import supabase from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -12,8 +12,29 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
+
+  // If already signed in, skip the login screen
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (data.session?.user) {
+        router.replace('/lessons/path');
+        return;
+      }
+      setCheckingSession(false);
+      const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+        if (session?.user && event === 'SIGNED_IN') {
+          router.replace('/lessons/path');
+        }
+      });
+      return () => {
+        listener.subscription.unsubscribe();
+      };
+    })();
+  }, [router]);
 
   const resetMessages = () => {
     setError(null);
@@ -56,22 +77,19 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="min-h-dvh bg-gradient-to-b from-primary/5 to-background flex items-center justify-center p-6">
-      <div className="w-full max-w-md space-y-8">
-        <div className="text-center space-y-2">
-          <div className="text-6xl mb-2">🍄</div>
-          <h1 className="text-3xl tracking-tight text-primary">MushroomLearn</h1>
-          <p className="text-muted-foreground">Learn, identify, and track your progress</p>
+    <main className="min-h-dvh bg-[rgb(48,99,54)] flex items-center justify-center p-6">
+      <div className="w-full max-w-md space-y-8 text-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-28 h-28 rounded-full bg-white/90 flex items-center justify-center shadow-inner overflow-hidden">
+            <span className="text-5xl">🍄</span>
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold text-white">mushio</h1>
+            <p className="text-sm text-white/80 mt-1">Sign in to continue</p>
+          </div>
         </div>
 
-        <div className="bg-card p-6 rounded-3xl border-4 border-primary/20 shadow-sm space-y-5">
-          <div className="space-y-1">
-            <h2 className="text-center text-primary">{isSignup ? 'Create Account' : 'Welcome Back'}</h2>
-            <p className="text-sm text-center text-muted-foreground">
-              {isSignup ? 'Start your mushroom learning journey' : 'Continue your learning adventure'}
-            </p>
-          </div>
-
+        <div className="space-y-4">
           {error && (
             <div className="rounded-lg border border-destructive/40 bg-destructive/10 text-destructive p-3 text-sm">
               {error}
@@ -83,70 +101,50 @@ export default function LoginPage() {
             </div>
           )}
 
-          <div className="space-y-4">
-            {isSignup && (
-              <div className="space-y-2">
-                <label htmlFor="name" className="text-sm">Name</label>
-                <Input id="name" placeholder="Your name" className="rounded-2xl h-11" />
-              </div>
-            )}
+          <Input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Email"
+            autoComplete="email"
+            className="h-12 rounded-full bg-white/90 text-center text-base"
+          />
 
-            <div className="space-y-2">
-              <label htmlFor="email" className="text-sm">Email</label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                autoComplete="email"
-                className="rounded-2xl h-11"
-              />
-            </div>
+          <Input
+            id="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Password"
+            autoComplete={isSignup ? 'new-password' : 'current-password'}
+            className="h-12 rounded-full bg-white/90 text-center text-base"
+          />
 
-            <div className="space-y-2">
-              <label htmlFor="password" className="text-sm">Password</label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                autoComplete={isSignup ? 'new-password' : 'current-password'}
-                className="rounded-2xl h-11"
-              />
-            </div>
+          <Button
+            onClick={handleAuth}
+            disabled={loading || !email || !password}
+            className="w-full h-12 rounded-full bg-[rgb(60,108,88)] hover:bg-[rgb(55,98,80)] text-white"
+          >
+            {loading ? 'Working…' : isSignup ? 'Sign Up' : 'Log In'}
+          </Button>
 
-            <Button
-              onClick={handleAuth}
-              disabled={loading || !email || !password}
-              className="w-full h-11 rounded-2xl"
-            >
-              {loading ? 'Working…' : isSignup ? 'Sign Up' : 'Log In'}
-            </Button>
+          <button
+            type="button"
+            onClick={() => setIsSignup(!isSignup)}
+            className="w-full h-12 rounded-full bg-white/70 text-[rgb(48,99,54)] font-semibold hover:bg-white"
+          >
+            {isSignup ? 'Back to Login' : 'Sign up'}
+          </button>
 
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleMagicLink}
-              disabled={loading || !email}
-              className="w-full h-11 rounded-2xl"
-            >
-              {loading ? 'Working…' : 'Send Magic Link'}
-            </Button>
-
-            <button
-              onClick={() => setIsSignup(!isSignup)}
-              className="w-full text-sm text-muted-foreground hover:text-foreground"
-              type="button"
-            >
-              {isSignup ? 'Already have an account? Log in' : "Don’t have an account? Sign up"}
-            </button>
-          </div>
-        </div>
-
-        <div className="text-center text-sm text-muted-foreground space-y-1">
-          <div>Learn at your own pace • Earn XP • Identify species</div>
+          <button
+            type="button"
+            onClick={handleMagicLink}
+            disabled={loading || !email}
+            className="w-full text-sm text-white/85 hover:text-white"
+          >
+            {loading ? 'Working…' : 'Send magic link'}
+          </button>
         </div>
       </div>
     </main>

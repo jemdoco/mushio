@@ -3,7 +3,7 @@ import { Button } from './ui/button';
 import { Progress } from './ui/progress';
 import { Eye, ChevronRight, Loader2 } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { projectId, publicAnonKey, supabaseUrl, supabaseFunctionSlug } from '../utils/supabase/info';
 
 interface QuestionScreenProps {
   onComplete: (correct: boolean, xp: number) => void;
@@ -50,7 +50,9 @@ export function QuestionScreen({ onComplete, onNext, lessonId }: QuestionScreenP
     setError(null);
     
     try {
-      const url = new URL(`https://${projectId}.supabase.co/functions/v1/make-server-1dd7ea02/questions/random`);
+      const base = supabaseUrl || (projectId ? `https://${projectId}.supabase.co` : "");
+      const slug = supabaseFunctionSlug || 'make-server-1dd7ea02';
+      const url = new URL(`${base}/functions/v1/${slug}/questions/random`);
       if (lessonId) {
         url.searchParams.append('lessonId', lessonId);
       }

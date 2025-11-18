@@ -1,6 +1,9 @@
-import { projectId, publicAnonKey } from './supabase/info';
+import { projectId, publicAnonKey, supabaseUrl, supabaseFunctionSlug } from './supabase/info';
 
-const API_BASE_URL = `https://${projectId}.supabase.co/functions/v1/make-server-1dd7ea02`;
+// Prefer explicit URL; fall back to projectId if only that is provided
+const baseUrl = supabaseUrl || (projectId ? `https://${projectId}.supabase.co` : "");
+const fnSlug = supabaseFunctionSlug || 'make-server-1dd7ea02';
+const API_BASE_URL = `${baseUrl}/functions/v1/${fnSlug}`;
 
 const headers = {
   'Authorization': `Bearer ${publicAnonKey}`,

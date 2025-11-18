@@ -1,5 +1,43 @@
 import supabase from "@/lib/supabaseClient";
 
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseFunctionSlug =
+  process.env.NEXT_PUBLIC_SUPABASE_FUNCTION_SLUG ?? "make-server-1dd7ea02";
+const functionsBaseUrl = supabaseUrl
+  ? `${supabaseUrl}/functions/v1/${supabaseFunctionSlug}`
+  : null;
+
+async function callFunctionsApi<T>(
+  path: string,
+  init?: RequestInit,
+): Promise<T> {
+  if (!functionsBaseUrl || !supabaseAnonKey) {
+    throw new Error(
+      "Missing Supabase env vars. Ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are defined.",
+    );
+  }
+  const headers = new Headers(init?.headers ?? {});
+  if (!headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${supabaseAnonKey}`);
+  }
+  if (!headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+  const response = await fetch(`${functionsBaseUrl}${path}`, {
+    ...init,
+    headers,
+    cache: init?.cache ?? "no-store",
+  });
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(
+      detail || `Supabase function ${path} failed (${response.status})`,
+    );
+  }
+  return response.json() as Promise<T>;
+}
+
 // Canonical shapes used by the app
 export interface Answer {
   id: string;
@@ -81,6 +119,16 @@ function resolveLessonIdRaw(raw: any): string {
   return String(id ?? "");
 }
 
+function normalizeLesson(raw: any): Lesson {
+  return {
+    ...(raw || {}),
+    id: resolveLessonIdRaw(raw),
+    title: resolveLessonTitle(raw),
+    description: resolveLessonDescription(raw),
+    icon: resolveLessonIcon(raw) ?? raw?.icon,
+  };
+}
+
 // Simple session caches to speed up client navigations
 let __lessonsCache: Lesson[] | null = null;
 let __lessonsPromise: Promise<Lesson[]> | null = null;
@@ -91,19 +139,8 @@ export async function fetchLessons(): Promise<Lesson[]> {
   if (__lessonsCache) return __lessonsCache;
   if (__lessonsPromise) return __lessonsPromise;
   __lessonsPromise = (async () => {
-    // Select all fields; sort in client to avoid server-side dependency on a specific column name.
-    const { data, error } = await supabase.from("lessons").select("*");
-    if (error) throw error;
-    const normalized = (data ?? []).map((raw: any) => {
-      const lesson: Lesson = {
-        ...(raw || {}),
-        id: resolveLessonIdRaw(raw),
-        title: resolveLessonTitle(raw),
-        description: resolveLessonDescription(raw),
-        icon: resolveLessonIcon(raw) ?? raw?.icon,
-      };
-      return lesson;
-    });
+    const payload = await callFunctionsApi<{ lessons?: any[] }>("/lessons");
+    const normalized = (payload.lessons ?? []).map(normalizeLesson);
     __lessonsCache = normalized.sort((a, b) => resolveOrder(a) - resolveOrder(b));
     return __lessonsCache;
   })();
@@ -111,24 +148,8 @@ export async function fetchLessons(): Promise<Lesson[]> {
 }
 
 export async function fetchLessonById(id: string): Promise<Lesson | null> {
-  // Canonical schema prefers lessons.lesson_id
-  const { data, error } = await supabase
-    .from("lessons")
-    .select("*")
-    .eq("lesson_id", id)
-    .maybeSingle();
-  if (error) throw error;
-  if (!data) return null;
-  const raw: any = data;
-  return {
-    ...(raw || {}),
-    id: resolveLessonIdRaw(raw),
-    title: resolveLessonTitle(raw),
-    description: resolveLessonDescription(raw),
-    icon: resolveLessonIcon(raw) ?? raw?.icon,
-    level: raw?.level,
-    xp_award: raw?.xp_award,
-  };
+  const lessons = await fetchLessons();
+  return lessons.find((lesson) => lesson.id === id) ?? null;
 }
 
 export async function estimateLessonXp(lessonId: string): Promise<number> {
@@ -300,24 +321,18 @@ export async function fetchQuestions(
   if (opts.lessonId && __questionsByLesson.has(opts.lessonId) && !opts.type) {
     return __questionsByLesson.get(opts.lessonId)!;
   }
-  let query = supabase.from("questions").select("*");
-  if (opts.lessonId) {
-    query = query.eq("lesson_id", opts.lessonId);
-  }
-  if (opts.type) query = query.eq("question_type", opts.type);
-  const { data, error } = await query;
-  if (error) throw error;
-  const rows = (data ?? []) as any[];
-  const normalized = rows.map(normalizeQuestion);
-  // Load answers separately (in case no FK is defined for nested select)
-  const idList = normalized.map((q) => q.id).filter(Boolean);
-  if (idList.length) {
-    const answersMap = await fetchAnswersMapByQuestionIds(idList);
-    normalized.forEach((q) => {
-      q.answers = answersMap[q.id] ?? [];
-      __questionById.set(q.id, q);
-    });
-  }
+  const params = new URLSearchParams();
+  if (opts.lessonId) params.set("lessonId", opts.lessonId);
+  if (opts.type) params.set("type", opts.type);
+  const query = params.toString();
+  const payload = await callFunctionsApi<{ questions?: any[] }>(
+    `/questions${query ? `?${query}` : ""}`,
+  );
+  const normalized = (payload.questions ?? []).map((raw: any) => {
+    const q = normalizeQuestion(raw);
+    __questionById.set(q.id, q);
+    return q;
+  });
   if (opts.lessonId && !opts.type) __questionsByLesson.set(opts.lessonId, normalized);
   return normalized;
 }
@@ -325,24 +340,21 @@ export async function fetchQuestions(
 export async function fetchRandomQuestion(
   opts: { lessonId?: string; type?: string } = {}
 ): Promise<Question | null> {
-  const all = await fetchQuestions(opts);
-  if (!all.length) return null;
-  return all[Math.floor(Math.random() * all.length)];
+  const params = new URLSearchParams();
+  if (opts.lessonId) params.set("lessonId", opts.lessonId);
+  if (opts.type) params.set("type", opts.type);
+  const query = params.toString();
+  const payload = await callFunctionsApi<{ question?: any }>(
+    `/questions/random${query ? `?${query}` : ""}`,
+  );
+  return payload.question ? normalizeQuestion(payload.question) : null;
 }
 
 export async function fetchQuestionById(id: string): Promise<Question | null> {
   if (__questionById.has(id)) return __questionById.get(id)!;
-  const { data, error } = await supabase
-    .from("questions")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
-  if (error) throw error;
-  if (!data) return null;
-  const q = normalizeQuestion(data);
-  // Fetch answers separately
-  const answersMap = await fetchAnswersMapByQuestionIds([q.id]);
-  q.answers = answersMap[q.id] ?? [];
+  const payload = await callFunctionsApi<{ question?: any }>(`/questions/${id}`);
+  if (!payload.question) return null;
+  const q = normalizeQuestion(payload.question);
   __questionById.set(q.id, q);
   return q;
 }
@@ -352,37 +364,13 @@ export async function submitAnswer(
   answerId: string,
   userId?: string
 ): Promise<{ isCorrect: boolean; xpEarned: number; correctAnswerId?: string }>{
-  // Client-side check: fetch answers and compute correctness
-  const question = await fetchQuestionById(questionId);
-  if (!question) throw new Error("Question not found");
-  const selected = question.answers?.find((a) => a.id === answerId);
-  if (!selected) throw new Error("Answer not found");
-  const correct = !!selected.is_correct;
-  const xp = correct ? question.xp ?? 10 : 0;
-  const correctAnswer = question.answers?.find((a) => a.is_correct);
-
-  // Optional: persist progress if you add a table and policies
-  // if (userId && correct) {
-  //   await supabase.from("progress").insert({ user_id: userId, question_id: questionId, earned_xp: xp });
-  // }
-
-  return { isCorrect: correct, xpEarned: xp, correctAnswerId: correctAnswer?.id };
-}
-
-// Helper: fetch answers for a set of question IDs and group by question_id
-async function fetchAnswersMapByQuestionIds(ids: string[]): Promise<Record<string, Answer[]>> {
-  const { data, error } = await supabase
-    .from("answers")
-    .select("*")
-    .in("question_id", ids.map((x) => Number.isNaN(Number(x)) ? x : Number(x))) as any;
-  if (error) throw error;
-  const rows = (data ?? []) as any[];
-  const map: Record<string, Answer[]> = {};
-  for (const raw of rows) {
-    const ans = normalizeAnswer(raw);
-    const key = String(ans.question_id);
-    if (!map[key]) map[key] = [];
-    map[key].push(ans);
-  }
-  return map;
+  const payload = await callFunctionsApi<{
+    isCorrect: boolean;
+    xpEarned: number;
+    correctAnswerId?: string;
+  }>(`/questions/${questionId}/submit`, {
+    method: "POST",
+    body: JSON.stringify({ answerId, userId }),
+  });
+  return payload;
 }

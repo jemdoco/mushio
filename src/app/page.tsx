@@ -1,7 +1,7 @@
-import { redirect } from 'next/navigation';
+// Route / now shows the login experience
+'use client';
+import LoginPage from './login/page';
 
 export default function Page() {
-  // Make the learning pathway the home screen
-  redirect('/lessons/path');
+  return <LoginPage />;
 }
-

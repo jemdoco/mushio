@@ -45,6 +45,9 @@ export default function LeaderboardPage() {
         <div className="mb-3 rounded-md border border-destructive/40 bg-destructive/10 text-destructive p-3">{error}</div>
       )}
       <div className="space-y-3">
+        {rows.length === 0 && !loading && (
+          <div className="text-muted-foreground text-sm">No scores yet.</div>
+        )}
         {rows.map((r, i) => (
           <div key={i} className="flex items-center justify-between bg-[rgb(50,90,50)] text-white rounded-2xl px-4 py-3 border-4 border-[rgba(255,245,180,0.9)]">
             <div className="flex items-center gap-3">
