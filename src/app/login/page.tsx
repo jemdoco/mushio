@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 export default function LoginPage() {
   const router = useRouter();
   const [isSignup, setIsSignup] = useState(false);
-  const [email, setEmail] = useState('');
+  const [name, setName] = useState(''); // treat as email input now
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
@@ -44,11 +44,26 @@ export default function LoginPage() {
   const handleAuth = async () => {
     resetMessages();
     setLoading(true);
+    const email = toEmail(name);
     try {
       if (isSignup) {
-        const { error } = await supabase.auth.signUp({ email, password });
+        const { data, error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
-        setStatus('Check your email to confirm your account.');
+        // If email confirmations are disabled, session may be returned immediately.
+        if (data?.session?.user) {
+          router.replace('/lessons/path');
+          return;
+        }
+        // Try immediate login (works when email confirmation is disabled in Supabase settings).
+        const { error: loginErr, data: loginData } = await supabase.auth.signInWithPassword({ email, password });
+        if (loginErr) {
+          setStatus('Account created. To log in with username only, disable email confirmations in Supabase Auth settings or use a real email.');
+        } else if (loginData?.session?.user) {
+          router.replace('/lessons/path');
+          return;
+        } else {
+          setStatus('Account created. You can log in now.');
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -65,6 +80,7 @@ export default function LoginPage() {
   const handleMagicLink = async () => {
     resetMessages();
     setLoading(true);
+    const email = toEmail(name);
     try {
       const { error } = await supabase.auth.signInWithOtp({ email });
       if (error) throw error;
@@ -74,6 +90,18 @@ export default function LoginPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const toEmail = (n: string) => {
+    const slug =
+      n
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, '-')
+        .replace(/[^a-z0-9_-]/g, '') || `user-${Date.now()}`;
+    // Treat input as email; if no "@", add example.com to keep Supabase happy
+    if (slug.includes('@')) return slug;
+    return `${slug}@example.com`;
   };
 
   return (
@@ -102,12 +130,12 @@ export default function LoginPage() {
           )}
 
           <Input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email"
-            autoComplete="email"
+            id="name"
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Name"
+            autoComplete="username"
             className="h-12 rounded-full bg-white/90 text-center text-base"
           />
 
@@ -123,7 +151,7 @@ export default function LoginPage() {
 
           <Button
             onClick={handleAuth}
-            disabled={loading || !email || !password}
+            disabled={loading || !name || !password}
             className="w-full h-12 rounded-full bg-[rgb(60,108,88)] hover:bg-[rgb(55,98,80)] text-white"
           >
             {loading ? 'Working…' : isSignup ? 'Sign Up' : 'Log In'}
@@ -140,10 +168,18 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={handleMagicLink}
-            disabled={loading || !email}
-            className="w-full text-sm text-white/85 hover:text-white"
+            disabled={loading || !name}
+            className="w-full h-11 rounded-full bg-white/80 text-[rgb(48,99,54)] font-semibold hover:bg-white"
           >
             {loading ? 'Working…' : 'Send magic link'}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => router.replace('/lessons/path')}
+            className="w-full text-sm text-white/85 hover:text-white underline"
+          >
+            Continue without login
           </button>
         </div>
       </div>

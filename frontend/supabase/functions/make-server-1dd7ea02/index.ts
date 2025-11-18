@@ -132,6 +132,7 @@ app.post("/make-server-1dd7ea02/questions/:id/submit", async (c) => {
     const id = c.req.param('id');
     const body = await c.req.json();
     const { answerId, userId } = body;
+    const answerIdStr = String(answerId);
     
     // Get the question with answers
     const { data: question, error: questionError } = await supabase
@@ -146,7 +147,7 @@ app.post("/make-server-1dd7ea02/questions/:id/submit", async (c) => {
     }
     
     // Find the selected answer
-    const selectedAnswer = question.answers?.find((ans: any) => ans.id === answerId);
+    const selectedAnswer = question.answers?.find((ans: any) => String(ans.id) === answerIdStr);
     
     if (!selectedAnswer) {
       return c.json({ error: 'Answer not found' }, 404);

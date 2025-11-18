@@ -171,7 +171,17 @@ export async function fetchCompletedLessonsForUser(): Promise<Set<string>> {
   try {
     const { data: auth } = await supabase.auth.getUser();
     const userId = auth.user?.id;
-    if (!userId) return new Set<string>();
+    if (!userId) {
+      // Fall back to local storage when not signed in
+      if (typeof window !== 'undefined') {
+        try {
+          const raw = window.localStorage.getItem('completedLessons');
+          const arr: string[] = raw ? JSON.parse(raw) : [];
+          return new Set(arr.map(String));
+        } catch {}
+      }
+      return new Set<string>();
+    }
     const { data, error } = await supabase
       .from('progress')
       .select('lesson_id, completed')
