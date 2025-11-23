@@ -14,7 +14,7 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>('login');
   const [showResult, setShowResult] = useState(false);
   const [lastResult, setLastResult] = useState<{ isCorrect: boolean; xp: number } | null>(null);
-  const [activeLessonId, setActiveLessonId] = useState<number | null>(null);
+  const [activeLessonId, setActiveLessonId] = useState<string | null>(null);
   const [questionSessionId, setQuestionSessionId] = useState(0);
 
   const handleLogin = () => {
@@ -25,7 +25,9 @@ export default function App() {
     setCurrentPage(page as Page);
   };
 
-  const handleStartLesson = (lessonId?: number) => {
+  const handleStartLesson = (lessonId?: string) => {
+    setShowResult(false);
+    setLastResult(null);
     setActiveLessonId(lessonId ?? null);
     setQuestionSessionId((prev) => prev + 1);
     setCurrentPage('question');
@@ -45,12 +47,14 @@ export default function App() {
 
   const handleRetryLesson = () => {
     setShowResult(false);
+    setLastResult(null);
     setQuestionSessionId((prev) => prev + 1);
     setCurrentPage('question');
   };
 
   const handleChooseLevel = () => {
     setShowResult(false);
+    setLastResult(null);
     setCurrentPage('lessons');
   };
 
@@ -68,7 +72,7 @@ export default function App() {
       {currentPage === 'question' && (
         <QuestionScreen
           key={`${activeLessonId ?? 'freeplay'}-${questionSessionId}`}
-          lessonId={activeLessonId ? String(activeLessonId) : undefined}
+          lessonId={activeLessonId ?? undefined}
           onComplete={handleQuestionComplete}
           onNext={handleQuestionNext}
         />

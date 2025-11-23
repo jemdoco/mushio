@@ -4,7 +4,7 @@ import { Badge } from './ui/badge';
 import { Flame, Zap, Star } from 'lucide-react';
 
 interface HomePageProps {
-  onStartLesson: (lessonId?: number) => void;
+  onStartLesson: (lessonId?: string) => void;
 }
 
 export function HomePage({ onStartLesson }: HomePageProps) {

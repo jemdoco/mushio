@@ -118,7 +118,7 @@ export function LessonPathPage({ onStartLesson }: LessonPathPageProps) {
                           ? 'bg-accent/20 border-accent/40 hover:scale-[1.02] cursor-pointer shadow-md'
                           : isLocked
                           ? 'bg-muted/30 border-border/50 hover:border-border/70 hover:bg-muted/40 cursor-pointer'
-                          : 'bg-muted/30 border-border/60 hover:border-border hover:bg-muted/40 cursor-pointer'
+                          : 'bg-muted/30 border-border/60 hover-border-border hover:bg-muted/40 cursor-pointer'
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
