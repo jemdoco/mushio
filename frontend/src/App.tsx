@@ -14,6 +14,8 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>('login');
   const [showResult, setShowResult] = useState(false);
   const [lastResult, setLastResult] = useState<{ isCorrect: boolean; xp: number } | null>(null);
+  const [activeLessonId, setActiveLessonId] = useState<number | null>(null);
+  const [questionSessionId, setQuestionSessionId] = useState(0);
 
   const handleLogin = () => {
     setCurrentPage('home');
@@ -23,7 +25,9 @@ export default function App() {
     setCurrentPage(page as Page);
   };
 
-  const handleStartLesson = () => {
+  const handleStartLesson = (lessonId?: number) => {
+    setActiveLessonId(lessonId ?? null);
+    setQuestionSessionId((prev) => prev + 1);
     setCurrentPage('question');
   };
 
@@ -39,6 +43,17 @@ export default function App() {
     setCurrentPage('question');
   };
 
+  const handleRetryLesson = () => {
+    setShowResult(false);
+    setQuestionSessionId((prev) => prev + 1);
+    setCurrentPage('question');
+  };
+
+  const handleChooseLevel = () => {
+    setShowResult(false);
+    setCurrentPage('lessons');
+  };
+
   const handleQuestionNext = () => {
     // In a real app, this would load the next question
     setCurrentPage('question');
@@ -51,7 +66,12 @@ export default function App() {
       {currentPage === 'home' && <HomePage onStartLesson={handleStartLesson} />}
       {currentPage === 'lessons' && <LessonPathPage onStartLesson={handleStartLesson} />}
       {currentPage === 'question' && (
-        <QuestionScreen onComplete={handleQuestionComplete} onNext={handleQuestionNext} />
+        <QuestionScreen
+          key={`${activeLessonId ?? 'freeplay'}-${questionSessionId}`}
+          lessonId={activeLessonId ? String(activeLessonId) : undefined}
+          onComplete={handleQuestionComplete}
+          onNext={handleQuestionNext}
+        />
       )}
       {currentPage === 'profile' && <ProfilePage />}
       {currentPage === 'leaderboard' && <LeaderboardPage />}
@@ -67,6 +87,8 @@ export default function App() {
           isCorrect={lastResult.isCorrect}
           xpEarned={lastResult.xp}
           onContinue={handleResultContinue}
+          onRetryLevel={handleRetryLesson}
+          onChooseLevel={handleChooseLevel}
         />
       )}
     </div>

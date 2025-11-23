@@ -5,9 +5,17 @@ interface ResultOverlayProps {
   isCorrect: boolean;
   xpEarned: number;
   onContinue: () => void;
+  onRetryLevel?: () => void;
+  onChooseLevel?: () => void;
 }
 
-export function ResultOverlay({ isCorrect, xpEarned, onContinue }: ResultOverlayProps) {
+export function ResultOverlay({
+  isCorrect,
+  xpEarned,
+  onContinue,
+  onRetryLevel,
+  onChooseLevel,
+}: ResultOverlayProps) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -66,17 +74,37 @@ export function ResultOverlay({ isCorrect, xpEarned, onContinue }: ResultOverlay
             : "Don't worry! Every mistake is a learning opportunity."}
         </p>
 
-        {/* Continue Button */}
-        <Button
-          onClick={onContinue}
-          className={`w-full h-14 rounded-2xl ${
-            isCorrect
-              ? 'bg-primary-foreground text-primary hover:bg-primary-foreground/90'
-              : 'bg-destructive-foreground text-destructive hover:bg-destructive-foreground/90'
-          }`}
-        >
-          Continue Learning
-        </Button>
+        {/* Actions */}
+        <div className="space-y-3">
+          <Button
+            onClick={onContinue}
+            className={`w-full h-14 rounded-2xl ${
+              isCorrect
+                ? 'bg-primary-foreground text-primary hover:bg-primary-foreground/90'
+                : 'bg-destructive-foreground text-destructive hover:bg-destructive-foreground/90'
+            }`}
+          >
+            Continue Learning
+          </Button>
+          {onRetryLevel && (
+            <Button
+              onClick={onRetryLevel}
+              variant="secondary"
+              className="w-full h-12 rounded-2xl"
+            >
+              Retry This Level
+            </Button>
+          )}
+          {onChooseLevel && (
+            <Button
+              onClick={onChooseLevel}
+              variant="outline"
+              className="w-full h-12 rounded-2xl border-2"
+            >
+              Choose Another Level
+            </Button>
+          )}
+        </div>
       </motion.div>
     </motion.div>
   );

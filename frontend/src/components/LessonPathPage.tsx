@@ -3,7 +3,7 @@ import { Progress } from './ui/progress';
 import { Badge } from './ui/badge';
 
 interface LessonPathPageProps {
-  onStartLesson: () => void;
+  onStartLesson: (lessonId?: number) => void;
 }
 
 export function LessonPathPage({ onStartLesson }: LessonPathPageProps) {
@@ -52,6 +52,9 @@ export function LessonPathPage({ onStartLesson }: LessonPathPageProps) {
 
       {/* Lesson Path */}
       <div className="max-w-md mx-auto px-6 py-8">
+        <p className="text-sm text-muted-foreground mb-4 text-center">
+          Tap any unlocked lesson to jump in or retry for extra practice.
+        </p>
         <div className="relative">
           {/* Connecting Line */}
           <div className="absolute left-8 top-0 bottom-0 w-1 bg-border rounded-full" />
@@ -61,6 +64,8 @@ export function LessonPathPage({ onStartLesson }: LessonPathPageProps) {
               const isCurrent = lesson.status === 'current';
               const isCompleted = lesson.status === 'completed';
               const isLocked = lesson.status === 'locked';
+              const isUnlocked = !isLocked;
+              const ctaLabel = isCompleted ? 'Retry' : isCurrent ? 'Continue' : 'Start';
 
               return (
                 <div key={lesson.id} className="relative">
@@ -89,13 +94,15 @@ export function LessonPathPage({ onStartLesson }: LessonPathPageProps) {
 
                     {/* Content */}
                     <button
-                      onClick={isCurrent ? onStartLesson : undefined}
-                      disabled={isLocked}
+                      onClick={() => isUnlocked && onStartLesson(lesson.id)}
+                      disabled={!isUnlocked}
                       className={`flex-1 p-4 rounded-2xl border-4 text-left transition-all ${
                         isCompleted
-                          ? 'bg-primary/5 border-primary/20'
+                          ? 'bg-primary/5 border-primary/20 hover:border-primary/40 hover:bg-primary/10 cursor-pointer'
                           : isCurrent
                           ? 'bg-accent/20 border-accent/40 hover:scale-[1.02] cursor-pointer shadow-md'
+                          : isUnlocked
+                          ? 'bg-muted/30 border-border/60 hover:border-border hover:bg-muted/40 cursor-pointer'
                           : 'bg-muted/30 border-border/50 opacity-60'
                       }`}
                     >
@@ -116,9 +123,13 @@ export function LessonPathPage({ onStartLesson }: LessonPathPageProps) {
                             )}
                           </div>
                         </div>
-                        {isCurrent && (
-                          <Badge className="bg-accent text-accent-foreground rounded-full">
-                            Start
+                        {isUnlocked && (
+                          <Badge
+                            className={`rounded-full ${
+                              isCurrent ? 'bg-accent text-accent-foreground' : 'bg-secondary'
+                            }`}
+                          >
+                            {ctaLabel}
                           </Badge>
                         )}
                         {isCompleted && (

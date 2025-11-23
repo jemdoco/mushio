@@ -4,7 +4,7 @@ import { Badge } from './ui/badge';
 import { Flame, Zap, Star } from 'lucide-react';
 
 interface HomePageProps {
-  onStartLesson: () => void;
+  onStartLesson: (lessonId?: number) => void;
 }
 
 export function HomePage({ onStartLesson }: HomePageProps) {
@@ -111,7 +111,7 @@ export function HomePage({ onStartLesson }: HomePageProps) {
           {categories.map((category) => (
             <Card
               key={category.id}
-              onClick={onStartLesson}
+              onClick={() => onStartLesson()}
               className={`p-5 ${category.color} border-4 rounded-3xl hover:scale-[1.02] transition-transform cursor-pointer shadow-sm`}
             >
               <div className="flex items-start gap-4">
