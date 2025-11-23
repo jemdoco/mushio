@@ -150,7 +150,7 @@ export function HomePage({ onStartLesson }: HomePageProps) {
             </div>
           </div>
           <button
-            onClick={onStartLesson}
+            onClick={() => onStartLesson()}
             className="w-full py-3 bg-primary text-primary-foreground rounded-2xl hover:bg-primary/90 transition-colors"
           >
             Start Challenge

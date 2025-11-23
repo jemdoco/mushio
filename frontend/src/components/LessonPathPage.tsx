@@ -1,6 +1,7 @@
 import { Check, Lock, Star } from 'lucide-react';
 import { Progress } from './ui/progress';
 import { Badge } from './ui/badge';
+import { Button } from './ui/button';
 
 interface LessonPathPageProps {
   onStartLesson: (lessonId?: number) => void;
@@ -20,6 +21,7 @@ export function LessonPathPage({ onStartLesson }: LessonPathPageProps) {
   const completedCount = lessons.filter((l) => l.status === 'completed').length;
   const totalCount = lessons.length;
   const progressPercent = (completedCount / totalCount) * 100;
+  const currentLesson = lessons.find((lesson) => lesson.status === 'current') ?? lessons[0];
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background pb-24">
@@ -48,12 +50,20 @@ export function LessonPathPage({ onStartLesson }: LessonPathPageProps) {
             />
           </div>
         </div>
+        <div className="max-w-md mx-auto mt-4">
+          <Button
+            className="w-full h-12 rounded-2xl bg-primary-foreground text-primary hover:bg-primary-foreground/90"
+            onClick={() => onStartLesson(currentLesson?.id)}
+          >
+            Start Here
+          </Button>
+        </div>
       </div>
 
       {/* Lesson Path */}
       <div className="max-w-md mx-auto px-6 py-8">
         <p className="text-sm text-muted-foreground mb-4 text-center">
-          Tap any unlocked lesson to jump in or retry for extra practice.
+          Tap any lesson to jump in, retry, or skip ahead whenever you like.
         </p>
         <div className="relative">
           {/* Connecting Line */}
@@ -64,8 +74,13 @@ export function LessonPathPage({ onStartLesson }: LessonPathPageProps) {
               const isCurrent = lesson.status === 'current';
               const isCompleted = lesson.status === 'completed';
               const isLocked = lesson.status === 'locked';
-              const isUnlocked = !isLocked;
-              const ctaLabel = isCompleted ? 'Retry' : isCurrent ? 'Continue' : 'Start';
+              const ctaLabel = isLocked
+                ? 'Start Anyway'
+                : isCompleted
+                ? 'Retry'
+                : isCurrent
+                ? 'Continue'
+                : 'Start';
 
               return (
                 <div key={lesson.id} className="relative">
@@ -94,16 +109,16 @@ export function LessonPathPage({ onStartLesson }: LessonPathPageProps) {
 
                     {/* Content */}
                     <button
-                      onClick={() => isUnlocked && onStartLesson(lesson.id)}
-                      disabled={!isUnlocked}
+                      type="button"
+                      onClick={() => onStartLesson(lesson.id)}
                       className={`flex-1 p-4 rounded-2xl border-4 text-left transition-all ${
                         isCompleted
                           ? 'bg-primary/5 border-primary/20 hover:border-primary/40 hover:bg-primary/10 cursor-pointer'
                           : isCurrent
                           ? 'bg-accent/20 border-accent/40 hover:scale-[1.02] cursor-pointer shadow-md'
-                          : isUnlocked
-                          ? 'bg-muted/30 border-border/60 hover:border-border hover:bg-muted/40 cursor-pointer'
-                          : 'bg-muted/30 border-border/50 opacity-60'
+                          : isLocked
+                          ? 'bg-muted/30 border-border/50 hover:border-border/70 hover:bg-muted/40 cursor-pointer'
+                          : 'bg-muted/30 border-border/60 hover:border-border hover:bg-muted/40 cursor-pointer'
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
@@ -123,15 +138,17 @@ export function LessonPathPage({ onStartLesson }: LessonPathPageProps) {
                             )}
                           </div>
                         </div>
-                        {isUnlocked && (
-                          <Badge
-                            className={`rounded-full ${
-                              isCurrent ? 'bg-accent text-accent-foreground' : 'bg-secondary'
-                            }`}
-                          >
-                            {ctaLabel}
-                          </Badge>
-                        )}
+                        <Badge
+                          className={`rounded-full ${
+                            isCurrent
+                              ? 'bg-accent text-accent-foreground'
+                              : isLocked
+                              ? 'bg-destructive/20 text-destructive-foreground border border-destructive/40'
+                              : 'bg-secondary'
+                          }`}
+                        >
+                          {ctaLabel}
+                        </Badge>
                         {isCompleted && (
                           <div className="text-primary">
                             <Check className="w-5 h-5" />
